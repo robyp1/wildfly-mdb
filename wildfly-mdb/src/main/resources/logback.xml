@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+
+<configuration scanPeriod="5 seconds" scan="true">
+    <property value="%d{dd/MM/yyyy HH:mm:ss.SSS} %-5level [%logger] %message%n" name="PATTERN" scope="context"/>
+    <property scope="context" name="LOG_PATH" value="${jboss.server.log.dir}" />
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}cacheMdb.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}cacheMdb.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.cadit" level="INFO" additivity="true">
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
