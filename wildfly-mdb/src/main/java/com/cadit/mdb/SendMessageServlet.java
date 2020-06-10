@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
  * http://localhost:8080/webcaching/SendMessageServlet?entry=key1&operation=GETFROMCACHE
  *
  * esempio per salvare il nuovo valore di key1
- * http://localhost:8080/webcaching/SendMessageServlet?entry=key1&operation=SETTOCACHE
+ * http://localhost:8080/webcaching/SendMessageServlet?entry=key1=val1&operation=SETTOCACHE
  */
 @WebServlet("/SendMessageServlet")
 public class SendMessageServlet extends HttpServlet {

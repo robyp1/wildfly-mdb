@@ -13,6 +13,7 @@ import javax.ejb.MessageDriven;
 import javax.ejb.MessageDrivenContext;
 import javax.jms.*;
 import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
 
 /**
@@ -56,6 +57,7 @@ public class ReadMessageMDB implements MessageListener {
         QueueSession session = null;
         QueueSender sender = null;
         TextMessage textMessage = (TextMessage) message;
+        String key;
 //        UserTransaction userTransaction = ctx.getUserTransaction();
         try {
             CacheManager cacheManager = CacheManager.getInstance();
@@ -64,17 +66,18 @@ public class ReadMessageMDB implements MessageListener {
                 case SETTOCACHE:
                     logger.info("Message received: " + textMessage.getText());
                     String[] tuple = textMessage.getText().split("=");
-                    CacheEntity cacheEntity = new CacheEntity(tuple[0], tuple[1]);
-                    entityManager.persist(cacheEntity);
+                    key = tuple[0];
+                    String newValue = tuple[1];
+                    CacheEntity cacheEntityManaged = saveOrUpdateDbEntry(key, newValue);
                     cacheManager.set(tuple[0], tuple[1]);
                     break;
                 case GETFROMCACHE:
-                    String key = textMessage.getText();
+                    key = textMessage.getText();
                     String value = cacheManager.get(key);
                     if (value == null) { //miss in cache
-                        CacheEntity cacheEntryDb = entityManager.createQuery("select c from CacheEntity c", CacheEntity.class).getSingleResult();
-                        if (cacheEntryDb != null) {
-                            value = cacheEntryDb.getValue();
+                        CacheEntity cacheEntryDbGet = getDbCacheEntry(key);
+                        if (cacheEntryDbGet != null) {
+                            value = cacheEntryDbGet.getValue();
                             cacheManager.set(key,value);
                         }
                     }
@@ -104,6 +107,29 @@ public class ReadMessageMDB implements MessageListener {
                 e.printStackTrace();
             }
         }
+    }
+
+    private CacheEntity saveOrUpdateDbEntry(String key, String newValue) {
+        CacheEntity cacheEntryDb = getDbCacheEntry(key);
+        if (cacheEntryDb!=null) {
+            cacheEntryDb.setValue(newValue);//aggiorno valore su db per chiave già esistente
+        }
+        else {
+            cacheEntryDb = new CacheEntity(key, newValue);//aggiungo nuova chiave valore su db
+        }
+        cacheEntryDb = entityManager.merge(cacheEntryDb);//salvo nuovo o aggiorno esistente
+        return cacheEntryDb;
+    }
+
+    private CacheEntity getDbCacheEntry(String key) {
+        CacheEntity entry = null;
+        try {
+             entry = entityManager.createQuery("select c from CacheEntity c where c.key = :key", CacheEntity.class)
+                    .setParameter("key", key)
+                    .getSingleResult();
+        }catch(NoResultException nrex){
+        }
+        return entry;
     }
 
     @PreDestroy
