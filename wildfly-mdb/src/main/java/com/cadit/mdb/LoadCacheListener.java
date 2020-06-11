@@ -1,7 +1,9 @@
 package com.cadit.mdb;
 
-import com.cadit.cache.CacheManager;
+import com.cadit.cache.CacheManagerBean;
 import com.cadit.data.CacheEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -16,12 +18,14 @@ public class LoadCacheListener implements ServletContextListener {
     @PersistenceContext(name = "cachePU")
     private EntityManager entityManager;//JTA
 
+    private final Logger log = LoggerFactory.getLogger(ReadMessageMDB.class);
+
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         //invoked by servlet container only the first time wildfly start..
         // carica da database la cache di questo server leggendo da database l'ultimo snapshots
-        //direttamente con CacheManager senza mandare messaggi jms
-        CacheManager cacheManager = CacheManager.getInstance();
+        //direttamente con CacheManagerBean senza mandare messaggi jms
+        CacheManagerBean cacheManager = EjbLocator.locateCacheManagerBean();
         List<CacheEntity> cacheEntries = entityManager.createQuery("select c from CacheEntity c", CacheEntity.class)
                 .getResultList();
         for (CacheEntity cacheEntry : cacheEntries) {//load cache with data persisted
@@ -32,6 +36,8 @@ public class LoadCacheListener implements ServletContextListener {
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-    //invoked by servlet container only the first time wildfly end..
+        //invoked by servlet container only the first time wildfly end..
+
+
     }
 }

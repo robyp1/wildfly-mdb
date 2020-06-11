@@ -23,6 +23,7 @@
 
     <logger name="com.cadit" level="INFO" additivity="true">
         <appender-ref ref="FILE"/>
+        <appender-ref ref="STDOUT"/>
     </logger>
 
     <root level="INFO">

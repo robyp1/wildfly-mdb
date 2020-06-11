@@ -20,178 +20,255 @@ SoftReference objects. But instead of simply pointing them directly to the targe
    for disposal and so will be its corresponding map entry.
  */
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.ref.SoftReference;
-import java.util.AbstractMap;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class SoftCache<K,V> extends AbstractMap<K,V>  {
+public class SoftCache<K, V> extends AbstractMap<K, V> {
 
-	/** The internal HashMap that will hold the softly-referenced data */
-	private final Map<K,SoftValue<K,V>> hash = Collections.synchronizedMap(new WeakHashMap<K,SoftValue<K,V>>());
-	/** The size of hard cache. */
-	private final int HARD_SIZE;
-	/** This LinkedList is used to keep strong references to a constant number of last used values. */
-	//quando rimuovo il ValueHolder dalla lista (perchè la lista è piena)
-	// rimuovo la SoftReference (Softvalue in mappa)  ma anche la chiave in mappa
-	// perchè la wekMap non trovandosi più la chiave nella lista, la cancella anche dalla mappa
-	// se per caso la softreference viene cancellata per mancanza memoria la get on trova più il valore
-	// e rimuove lei da codice la chiave (è una softValue quindi dura finchè la memoria non si riempe)
-	private final LinkedList<ValueHolder<K,V>> hardCache= new LinkedList<ValueHolder<K,V>>();
-	/** The lock used to synchronize access to hardCache*/
-	private final ReentrantLock hardCacheLock = new ReentrantLock();
+    /**
+     * The internal HashMap that will hold the softly-referenced data
+     */
+    private final Map<K, SoftValue<K, V>> hash = Collections.synchronizedMap(new WeakHashMap<K, SoftValue<K, V>>());
+    /**
+     * The size of hard cache.
+     */
+    private final int HARD_SIZE;
+    /**
+     * This LinkedList is used to keep strong references to a constant number of last used values.
+     */
+    //quando rimuovo il ValueHolder dalla lista (perchè la lista è piena)
+    // rimuovo la SoftReference (Softvalue in mappa)  ma anche la chiave in mappa
+    // perchè la wekMap non trovandosi più la chiave nella lista, la cancella anche dalla mappa
+    // se per caso la softreference viene cancellata per mancanza memoria la get on trova più il valore
+    // e rimuove lei da codice la chiave (è una softValue quindi dura finchè la memoria non si riempe)
+    private final LinkedList<ValueHolder<K, V>> hardCache = new LinkedList<ValueHolder<K, V>>();
+    /**
+     * The lock used to synchronize access to hardCache
+     */
+    private final ReentrantLock hardCacheLock = new ReentrantLock();
 
-	public SoftCache() {
-		this(100); 
-	}
+    private final Logger log = LoggerFactory.getLogger(SoftCache.class);
 
-	public SoftCache(int hardSize) {
-		HARD_SIZE = hardSize;
-	}
+    public SoftCache() {
+        this(100);
+    }
 
-	public SoftCache(Map<? extends K, ? extends V> t) {
-		this();
-		putAll(t);
-	}	
-	public SoftCache(Map<? extends K, ? extends V> t, int hardSize) {
-		this(hardSize);
-		putAll(t);
-	}	
+    public SoftCache(int hardSize) {
+        HARD_SIZE = hardSize;
+    }
 
-	public void putAll(Map<? extends K, ? extends V> t) {
-		Iterator i = t.entrySet().iterator();
-		while (i.hasNext()) {
-			Map.Entry<K, V> e = (Map.Entry<K, V>) i.next();
-			put(e.getKey(), e.getValue());
-		}
-	}
+    public SoftCache(Map<? extends K, ? extends V> t) {
+        this();
+        putAll(t);
+    }
 
-	public V get(Object key) {
-		ValueHolder<K,V> result = null;
-		SoftValue<K,V> soft_ref = hash.get(key);
-		if (soft_ref != null) {
-			// From the SoftReference we get the value, which can be
-			// null if it was not in the map,  or if it was cleared by the garbage collector.
-			result = soft_ref.get();
-			if (result == null) {
-				hash.remove(key);
-			} else {
-				hardCacheLock.lock();
-				try{
-					hardCache.add(result);
-					if (hardCache.size() > HARD_SIZE) {
-						hardCache.removeFirst();
-					}
-				}finally{
-					hardCacheLock.unlock();
-				}
-			}
-		}
-		if(result!=null)
-			return result.getValue();
-		else
-			return null;
-	}
+    public SoftCache(Map<? extends K, ? extends V> t, int hardSize) {
+        this(hardSize);
+        putAll(t);
+    }
 
-	public V put(K key, V value) {
-		SoftValue<K,V> oldVal= hash.put(key, new SoftValue<K,V>(key,value));
-		if(oldVal!=null)
-			return oldVal.getValue();
-		else 
-			return null;
+    public void putAll(Map<? extends K, ? extends V> t) {
+        Iterator i = t.entrySet().iterator();
+        while (i.hasNext()) {
+            Map.Entry<K, V> e = (Map.Entry<K, V>) i.next();
+            put(e.getKey(), e.getValue());
+        }
+    }
 
-	}
+    public V get(Object key) {
+        ValueHolder<K, V> result = null;
+        SoftValue<K, V> soft_ref = hash.get(key);
+        if (soft_ref != null) {
+            // From the SoftReference we get the value, which can be
+            // null if it was not in the map,  or if it was cleared by the garbage collector.
+            result = soft_ref.get();
+            if (result == null) {
+                hash.remove(key);
+            } else {
+                hardCacheLock.lock();
+                try {
+                    hardCache.add(result);
+                    if (hardCache.size() > HARD_SIZE) {
+                        hardCache.removeFirst();
+                    }
+                } finally {
+                    hardCacheLock.unlock();
+                }
+            }
+        }
+        if (result != null)
+            return result.getValue();
+        else
+            return null;
+    }
 
-	public V remove(Object key) {
-		SoftValue<K,V> oldVal =  hash.remove(key);	
-		if(oldVal!=null){
-			ValueHolder<K,V> toRemove = oldVal.get();
-			hardCacheLock.lock();
-			try{
-				ListIterator<ValueHolder<K,V>> li= hardCache.listIterator(0);
-				while(li.hasNext()){
-					if(li.next() == toRemove)
-						li.remove();
-				}
-			}finally{
-				hardCacheLock.unlock();
-			}
-			return oldVal.getValue();
-		}else{ 
-			return null;
-		}
-	}
+    public V put(K key, V value) {
+        SoftValue<K, V> oldVal = hash.put(key, new SoftValue<K, V>(key, value));
+        if (oldVal != null)
+            return oldVal.getValue();
+        else
+            return null;
 
-	public void clear() {
-		hardCacheLock.lock();
-		try{
-			hardCache.clear();
-		}finally{
-			hardCacheLock.unlock();
-		}
-		hash.clear();
-	}
+    }
 
-	public int size() {
-		return hash.size();
-	}
+    public V remove(Object key) {
+        SoftValue<K, V> oldVal = hash.remove(key);
+        if (oldVal != null) {
+            ValueHolder<K, V> toRemove = oldVal.get();
+            hardCacheLock.lock();
+            try {
+                ListIterator<ValueHolder<K, V>> li = hardCache.listIterator(0);
+                while (li.hasNext()) {
+                    if (li.next() == toRemove)
+                        li.remove();
+                }
+            } finally {
+                hardCacheLock.unlock();
+            }
+            return oldVal.getValue();
+        } else {
+            return null;
+        }
+    }
 
-	public Set entrySet() {
-		//Not implemented because this method is not used.
-		throw new UnsupportedOperationException();
-	}
+    public void clear() {
+        hardCacheLock.lock();
+        try {
+            hardCache.clear();
+        } finally {
+            hardCacheLock.unlock();
+        }
+        hash.clear();
+    }
 
-	/*
-	 * This class is a wrapper for value which contains not only the 
-	 * value but also the key.  The strong reference to the key prevents
-	 * it from being garbage collected. Once the value is cleaned up, there 
-	 * is no strong reference to the key and so it is cleaned too (Because we use a WeakHashMap)
-	 */
+    public int size() {
+        return hash.size();
+    }
 
-	private static class ValueHolder<K,V> {
-		private final K key;
-		private final V val;
-		private ValueHolder(K key, V value) {                       
-			this.key = key;
-			this.val = value;
-		}
+    public Set entrySet() {
+        //Not implemented because this method is not used.
+        throw new UnsupportedOperationException();
+    }
 
-		public K getKey() {
-			return this.key;
-		}
+    /*
+     * This class is a wrapper for value which contains not only the
+     * value but also the key.  The strong reference to the key prevents
+     * it from being garbage collected. Once the value is cleaned up, there
+     * is no strong reference to the key and so it is cleaned too (Because we use a WeakHashMap)
+     */
 
-		public V getValue() {
-			return this.val;
-		}
+    private static class ValueHolder<K, V> {
+        private final K key;
+        private final V val;
+        private final AtomicLong lastAccessMs = new AtomicLong(0);
 
-	}      
+        private ValueHolder(K key, V value) {
+            this.key = key;
+            this.val = value;
 
-	private static final class SoftValue<K,V> extends SoftReference<ValueHolder<K,V>>  {
-		private SoftValue(K key,V value) {
-			super(new ValueHolder<K,V>(key,value));
-		}
+        }
 
-		public K getKey() {
-			ValueHolder<K,V> valueHolder=this.get();
-			if(valueHolder!=null)
-				return valueHolder.getKey();
-			else
-				return null;
+        public K getKey() {
+            return this.key;
+        }
 
-		}
+        public V getValue() {
+            lastAccessMs.getAndSet(System.currentTimeMillis());
+            return this.val;
+        }
 
-		public V getValue() {
-			ValueHolder<K,V> valueHolder=this.get();
-			if(valueHolder!=null)
-				return valueHolder.getValue();
-			else
-				return null;               
-		}
-	}
+        public AtomicLong getLastAccessMs() {
+            return lastAccessMs;
+        }
+
+    }
+
+    private static final class SoftValue<K, V> extends SoftReference<ValueHolder<K, V>> {
+        private SoftValue(K key, V value) {
+            super(new ValueHolder<K, V>(key, value));
+        }
+
+        public K getKey() {
+            ValueHolder<K, V> valueHolder = this.get();
+            if (valueHolder != null)
+                return valueHolder.getKey();
+            else
+                return null;
+
+        }
+
+        public V getValue() {
+            ValueHolder<K, V> valueHolder = this.get();
+            if (valueHolder != null)
+                return valueHolder.getValue();
+            else
+                return null;
+        }
+    }
+
+
+    final class ExpireTimeAccessChecker implements Runnable {
+
+        private final Long DEFAULT_EXPIRE_TIME = 3L;
+        final Long expiredTimeMs;
+
+        ExpireTimeAccessChecker(Long expiredTimeSec) {
+            if (expiredTimeSec == null || expiredTimeSec < 3L) {
+                expiredTimeSec = DEFAULT_EXPIRE_TIME;
+            }
+            this.expiredTimeMs = TimeUnit.SECONDS.toMillis(expiredTimeSec);
+        }
+
+        @Override
+        public void run() {
+            final ReentrantLock iterationLock = new ReentrantLock();
+            iterationLock.lock();
+            for (K hashKey : hash.keySet()) {
+                if (hash.get(hashKey).get() != null) {
+                    ValueHolder<K, V> kvValueHolder1 = hash.get(hashKey).get();
+                    AtomicLong lastAccessMs = kvValueHolder1.getLastAccessMs();
+                    K key = kvValueHolder1.key;
+                    long elapsedTimeElement = System.currentTimeMillis() - lastAccessMs.get();
+                    boolean lock = false;
+                    try {
+                        if (elapsedTimeElement > expiredTimeMs) {
+                            lock = true;
+                            hardCacheLock.lock();
+                            ListIterator<ValueHolder<K, V>> valueHolderListIterator = hardCache.listIterator();
+                            //rimuovo dalla lista tutte le chiavi vecchie e nuove
+                            while (valueHolderListIterator.hasNext()) {
+                                ValueHolder<K, V> kvValueHolder = valueHolderListIterator.next();
+                                if (kvValueHolder.key.equals(key)) {
+                                    hash.remove(key);
+                                    valueHolderListIterator.remove();
+                                    long hours = TimeUnit.MILLISECONDS.toHours(elapsedTimeElement);
+                                    long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTimeElement);
+                                    long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTimeElement);
+                                    log.info(String.format(" removed element [%s:%s] elapsed time: %02d:%02d:%02d ", kvValueHolder.key, kvValueHolder.val, hours, minutes, seconds));
+                                }
+                            }
+
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    } finally {
+                        if (lock) {
+                            hardCacheLock.unlock();
+                            lock = false;
+                        }
+                    }
+                }
+
+            }
+            log.info(String.format("Sleep for 8 seconds"));
+        }
+    }
+
+
 }

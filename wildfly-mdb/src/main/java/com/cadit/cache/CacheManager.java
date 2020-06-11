@@ -1,26 +1,35 @@
 package com.cadit.cache;
 
-/**
- * TODO: implementare anche la rimozione dei valori nella get a tempo
- */
+import javax.ejb.Lock;
+import javax.ejb.LockType;
+
 public class CacheManager {
 
     private static final CacheManager instance = new CacheManager();
-    private final SoftCache<String,String> cache;
+    private final SoftCache<String, String> cache;
 
     private CacheManager() {
         cache = new SoftCache<>();
     }
 
-    public final static CacheManager getInstance(){
+
+    static CacheManager getInstance() {
         return instance;
     }
 
-    public String get(String key){
-        return cache.get(key);
+
+    public SoftCache.ExpireTimeAccessChecker expireTaskChecker() {
+        return cache.new ExpireTimeAccessChecker(5L);
     }
 
-    public void set(String key, String value){
-        cache.put(key,value);
+
+    @Lock(LockType.READ)
+    public String get(String key) {
+        return cache.get(key); //threadsafe, no writelock necessary
+    }
+
+    @Lock(LockType.READ)
+    public void put(String key, String value) {
+        cache.put(key, value);//threadsafe, no writelock necessary
     }
 }

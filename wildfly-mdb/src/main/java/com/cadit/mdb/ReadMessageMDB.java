@@ -1,6 +1,6 @@
 package com.cadit.mdb;
 
-import com.cadit.cache.CacheManager;
+import com.cadit.cache.CacheManagerBean;
 import com.cadit.data.CacheEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +9,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.ejb.ActivationConfigProperty;
+import javax.ejb.EJB;
 import javax.ejb.MessageDriven;
 import javax.ejb.MessageDrivenContext;
 import javax.jms.*;
@@ -42,6 +43,9 @@ public class ReadMessageMDB implements MessageListener {
     @Resource(mappedName = "java:/jms/queue/ResponseEventCachingQueue")
     private Queue replyQueue;
 
+    @EJB
+    CacheManagerBean cacheManagerBean;
+
     private QueueConnection connection;
 
     @PostConstruct
@@ -60,7 +64,6 @@ public class ReadMessageMDB implements MessageListener {
         String key;
 //        UserTransaction userTransaction = ctx.getUserTransaction();
         try {
-            CacheManager cacheManager = CacheManager.getInstance();
             logger.info("Message received: " + textMessage.getText());
             //message selector
             switch (TypeMSG.valueOf(message.getStringProperty("operation"))) {
@@ -69,16 +72,16 @@ public class ReadMessageMDB implements MessageListener {
                     key = tuple[0];
                     String newValue = tuple[1];
                     CacheEntity cacheEntityManaged = saveOrUpdateDbEntry(key, newValue);
-                    cacheManager.set(tuple[0], tuple[1]);
+                    cacheManagerBean.set(tuple[0], tuple[1]);
                     break;
                 case GETFROMCACHE:
                     key = textMessage.getText();
-                    String value = cacheManager.get(key);
+                    String value = cacheManagerBean.get(key);
                     if (value == null) { //miss in cache
                         CacheEntity cacheEntryDbGet = getDbCacheEntry(key);
                         if (cacheEntryDbGet != null) {
                             value = cacheEntryDbGet.getValue();
-                            cacheManager.set(key,value);
+                            cacheManagerBean.set(key,value);
                         }
                     }
                     //send reply response for get request received..
