@@ -61,10 +61,10 @@ public class ReadMessageMDB implements MessageListener {
 //        UserTransaction userTransaction = ctx.getUserTransaction();
         try {
             CacheManager cacheManager = CacheManager.getInstance();
+            logger.info("Message received: " + textMessage.getText());
             //message selector
             switch (TypeMSG.valueOf(message.getStringProperty("operation"))) {
                 case SETTOCACHE:
-                    logger.info("Message received: " + textMessage.getText());
                     String[] tuple = textMessage.getText().split("=");
                     key = tuple[0];
                     String newValue = tuple[1];

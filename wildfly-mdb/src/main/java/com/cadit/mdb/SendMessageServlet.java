@@ -9,7 +9,6 @@ import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -70,11 +69,15 @@ public class SendMessageServlet extends HttpServlet {
             //ic.lookup("java:comp/UserTransaction");
 //            connection = getConnection(ic);
             jmsSession = getJMSSession(ic);
-            publish(ic, jmsSession, text, type);
+            String correlationId = String.valueOf(UUID.randomUUID());
+            publish(ic, jmsSession, text, type, correlationId);
             if (receiver!= null && type.equals(TypeMSG.GETFROMCACHE)){
                 Message reply = receiver.receive(TimeUnit.SECONDS.toMillis(60));
-                TextMessage reply1 = (TextMessage) reply;
-                System.out.println("reply: " + reply1.getText() + " for request correlation id = " + reply1.getJMSCorrelationID());
+                //message receive selector
+                if (reply.getJMSCorrelationID().equals(correlationId)) {
+                    TextMessage reply1 = (TextMessage) reply;
+                    System.out.println("reply: " + reply1.getText() + " for request correlation id = " + reply1.getJMSCorrelationID());
+                }
             }
 
         } catch (NamingException e) {
@@ -105,12 +108,12 @@ public class SendMessageServlet extends HttpServlet {
         return session;
     }
 
-    public void publish(Context ic, Session session, String text, TypeMSG type) throws JMSException, NamingException {
+    public void publish(Context ic, Session session, String text, TypeMSG type, String correlationId) throws JMSException, NamingException {
         Queue queue = (Queue) ic.lookup("jms/queue/EventCachingQueue");
         MessageProducer publisher = session.createProducer(queue);
         TextMessage message = session.createTextMessage(text);
         message.setStringProperty("operation", type.name());
-        message.setJMSCorrelationID(String.valueOf(UUID.randomUUID()));
+        message.setJMSCorrelationID(correlationId);
         publisher.send(message);
     }
 
