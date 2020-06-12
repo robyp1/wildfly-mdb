@@ -17,8 +17,12 @@ import java.util.concurrent.TimeUnit;
 public class CacheManagerBean {
 
 
+    /**
+     * NB: su was 8.5 con JEE6 va sostituito con un @Timer schedulato
+     */
     @Resource// usa il default di WildFly: lookup="java:jboss/ee/concurrency/scheduler/default"
     private ManagedScheduledExecutorService executorService;
+
     private ScheduledFuture<?> taskFuture;
 
     @PersistenceContext(name = "cachePU")
