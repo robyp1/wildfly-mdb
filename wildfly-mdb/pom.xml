@@ -9,7 +9,7 @@
     <packaging>war</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <javaee-api.version>7.0</javaee-api.version>
+        <javaee-api.version>6.0</javaee-api.version>
         <maven.compiler.target>1.7</maven.compiler.target>
         <maven.compiler.source>1.7</maven.compiler.source>
         <version.wildfly.maven.plugin>1.1.0.Final</version.wildfly.maven.plugin>
@@ -57,14 +57,14 @@
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-tools</artifactId>
             <version>${hibernate.version}</version>
-            <scope>test</scope>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-validator</artifactId>
             <version>${hibernate.version}</version>
-            <scope>test</scope>
+            <scope>provided</scope>
         </dependency>
 
         <!-- log dep-->
