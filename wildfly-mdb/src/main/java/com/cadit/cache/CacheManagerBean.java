@@ -6,6 +6,8 @@ import javax.annotation.Resource;
 import javax.ejb.Singleton;
 import javax.ejb.Startup;
 import javax.enterprise.concurrent.ManagedScheduledExecutorService;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -18,6 +20,9 @@ public class CacheManagerBean {
     @Resource// usa il default di WildFly: lookup="java:jboss/ee/concurrency/scheduler/default"
     private ManagedScheduledExecutorService executorService;
     private ScheduledFuture<?> taskFuture;
+
+    @PersistenceContext(name = "cachePU")
+    private EntityManager em;//JTA
 
 
     @PostConstruct
@@ -34,6 +39,16 @@ public class CacheManagerBean {
 
     public void set(String key, String value) {
         CacheManager.getInstance().put(key, value);
+    }
+
+     public <K,V> void removeFromDb(K key, V val) {
+        int executed = em.createQuery("delete CacheEntity c where c.key = :key and c.value = :value")
+                .setParameter("key", key)
+                .setParameter("value", val)
+                .executeUpdate();
+        em.flush();
+        em.clear();
+
     }
 
 

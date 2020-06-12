@@ -77,12 +77,8 @@ public class ReadMessageMDB implements MessageListener {
                 case GETFROMCACHE:
                     key = textMessage.getText();
                     String value = cacheManagerBean.get(key);
-                    if (value == null) { //miss in cache
-                        CacheEntity cacheEntryDbGet = getDbCacheEntry(key);
-                        if (cacheEntryDbGet != null) {
-                            value = cacheEntryDbGet.getValue();
-                            cacheManagerBean.set(key,value);
-                        }
+                    if (value==null){
+                        logger.warn("Miss value in cache for key: " + key);
                     }
                     //send reply response for get request received..
                     session = connection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);

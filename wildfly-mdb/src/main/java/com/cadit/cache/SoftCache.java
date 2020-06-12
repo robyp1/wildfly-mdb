@@ -20,6 +20,7 @@ SoftReference objects. But instead of simply pointing them directly to the targe
    for disposal and so will be its corresponding map entry.
  */
 
+import com.cadit.mdb.EjbLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -237,8 +238,9 @@ public class SoftCache<K, V> extends AbstractMap<K, V> {
                     long elapsedTimeElement = System.currentTimeMillis() - lastAccessMs.get();
                     boolean lock = false;
                     try {
-                        if (elapsedTimeElement > expiredTimeMs) {
+                        if (elapsedTimeElement > expiredTimeMs && lastAccessMs.get()!=0) {
                             lock = true;
+                            CacheManagerBean cacheManager = EjbLocator.locateCacheManagerBean();
                             hardCacheLock.lock();
                             ListIterator<ValueHolder<K, V>> valueHolderListIterator = hardCache.listIterator();
                             //rimuovo dalla lista tutte le chiavi vecchie e nuove
@@ -247,10 +249,8 @@ public class SoftCache<K, V> extends AbstractMap<K, V> {
                                 if (kvValueHolder.key.equals(key)) {
                                     hash.remove(key);
                                     valueHolderListIterator.remove();
-                                    long hours = TimeUnit.MILLISECONDS.toHours(elapsedTimeElement);
-                                    long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTimeElement);
-                                    long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTimeElement);
-                                    log.info(String.format(" removed element [%s:%s] elapsed time: %02d:%02d:%02d ", kvValueHolder.key, kvValueHolder.val, hours, minutes, seconds));
+                                    cacheManager.removeFromDb(kvValueHolder.key, kvValueHolder.val);
+                                    logExpiredElement(elapsedTimeElement, kvValueHolder);
                                 }
                             }
 
@@ -267,6 +267,15 @@ public class SoftCache<K, V> extends AbstractMap<K, V> {
 
             }
             log.info(String.format("Sleep for 8 seconds"));
+        }
+
+
+
+        private void logExpiredElement(long elapsedTimeElement, ValueHolder<K, V> kvValueHolder) {
+            long hours = TimeUnit.MILLISECONDS.toHours(elapsedTimeElement);
+            long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTimeElement);
+            long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTimeElement);
+            log.info(String.format(" removed element [%s:%s] elapsed time: %02d:%02d:%02d ", kvValueHolder.key, kvValueHolder.val, hours, minutes, seconds));
         }
     }
 
