@@ -18,7 +18,7 @@ public class CacheManagerBean {
 
 
     /**
-     * NB: su was 8.5 con JEE6 va sostituito con un @Timer schedulato
+     * NB: su was 8.5 con JEE6 va sostituito con un @Timer schedulato, vedere branch  origin/jee6_compatibility
      */
     @Resource// usa il default di WildFly: lookup="java:jboss/ee/concurrency/scheduler/default"
     private ManagedScheduledExecutorService executorService;
