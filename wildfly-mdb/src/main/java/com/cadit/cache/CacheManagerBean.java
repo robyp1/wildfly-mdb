@@ -1,12 +1,10 @@
 package com.cadit.cache;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.ejb.*;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import java.util.concurrent.ScheduledFuture;
 
 
 @Singleton
@@ -16,8 +14,6 @@ public class CacheManagerBean {
 
     @Resource
     private TimerService timerService;
-
-    private ScheduledFuture<?> taskFuture;
 
     @PersistenceContext(name = "cachePU")
     private EntityManager em;//JTA
@@ -63,12 +59,5 @@ public class CacheManagerBean {
 
     }
 
-
-    @PreDestroy
-    public void dispose() {
-        if (taskFuture != null) {
-            taskFuture.cancel(true);
-        }
-    }
 
 }

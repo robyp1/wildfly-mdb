@@ -20,6 +20,8 @@ SoftReference objects. But instead of simply pointing them directly to the targe
    for disposal and so will be its corresponding map entry.
  */
 
+import com.cadit.domain.CachePoller;
+import com.cadit.domain.ExpireTimeAccess;
 import com.cadit.mdb.EjbLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class SoftCache<K, V> extends AbstractMap<K, V> {
+public class SoftCache<K, V> extends AbstractMap<K, V> implements CachePoller {
 
     /**
      * The internal HashMap that will hold the softly-referenced data
@@ -49,12 +51,10 @@ public class SoftCache<K, V> extends AbstractMap<K, V> {
     // se per caso la softreference viene cancellata per mancanza memoria la get on trova più il valore
     // e rimuove lei da codice la chiave (è una softValue quindi dura finchè la memoria non si riempe)
     private final LinkedList<ValueHolder<K, V>> hardCache = new LinkedList<ValueHolder<K, V>>();
-    /**
-     * The lock used to synchronize access to hardCache
-     */
-    private final ReentrantLock hardCacheLock = new ReentrantLock();
+
 
     private final Logger log = LoggerFactory.getLogger(SoftCache.class);
+    private ReentrantLock hardCacheLock = new ReentrantLock();
 
     public SoftCache() {
         this(100);
@@ -213,71 +213,52 @@ public class SoftCache<K, V> extends AbstractMap<K, V> {
         }
     }
 
-
-    final class ExpireTimeAccessChecker implements Runnable {
-
-        private final Long DEFAULT_EXPIRE_TIME = 3L;
-        final Long expiredTimeMs;
-
-        ExpireTimeAccessChecker(Long expiredTimeSec) {
-            if (expiredTimeSec == null || expiredTimeSec < 3L) {
-                expiredTimeSec = DEFAULT_EXPIRE_TIME;
-            }
-            this.expiredTimeMs = TimeUnit.SECONDS.toMillis(expiredTimeSec);
-        }
-
-        @Override
-        public void run() {
-            final ReentrantLock iterationLock = new ReentrantLock();
-            iterationLock.lock();
-            for (K hashKey : hash.keySet()) {
-                if (hash.get(hashKey).get() != null) {
-                    ValueHolder<K, V> kvValueHolder1 = hash.get(hashKey).get();
-                    AtomicLong lastAccessMs = kvValueHolder1.getLastAccessMs();
-                    K key = kvValueHolder1.key;
-                    long elapsedTimeElement = System.currentTimeMillis() - lastAccessMs.get();
-                    boolean lock = false;
-                    try {
-                        if (elapsedTimeElement > expiredTimeMs && lastAccessMs.get()!=0) {
-                            lock = true;
-                            CacheManagerBean cacheManager = EjbLocator.locateCacheManagerBean();
-                            hardCacheLock.lock();
-                            ListIterator<ValueHolder<K, V>> valueHolderListIterator = hardCache.listIterator();
-                            //rimuovo dalla lista tutte le chiavi vecchie e nuove
-                            while (valueHolderListIterator.hasNext()) {
-                                ValueHolder<K, V> kvValueHolder = valueHolderListIterator.next();
-                                if (kvValueHolder.key.equals(key)) {
-                                    hash.remove(key);
-                                    valueHolderListIterator.remove();
-                                    cacheManager.removeFromDb(kvValueHolder.key, kvValueHolder.val);
-                                    logExpiredElement(elapsedTimeElement, kvValueHolder);
-                                }
+    public void pollExpiredDataCache(ExpireTimeAccess expiredTimeChecker) {
+//        for (K hashKey : hash.keySet()) {
+        Iterator<Entry<K, SoftValue<K, V>>> hashIterator = hash.entrySet().iterator();
+        while (hashIterator.hasNext()) {
+            Entry<K, SoftValue<K, V>> hashEntry = hashIterator.next();
+            if (hashEntry.getValue().get() != null) {
+                SoftCache.ValueHolder<K, V> kvValueHolder1 = hashEntry.getValue().get();
+                AtomicLong lastAccessMs = kvValueHolder1.getLastAccessMs();
+                K key = kvValueHolder1.key;
+                long elapsedTimeElement = System.currentTimeMillis() - lastAccessMs.get();
+                boolean lock = false;
+                try {
+                    if (elapsedTimeElement > expiredTimeChecker.getExpiredTime() && lastAccessMs.get() != 0) {
+                        lock = true;
+                        CacheManagerBean cacheManager = EjbLocator.locateCacheManagerBean();
+                        hardCacheLock.lock();
+                        ListIterator<SoftCache.ValueHolder<K, V>> valueHolderListIterator = hardCache.listIterator();
+                        //rimuovo dalla lista tutte le chiavi vecchie e nuove
+                        while (valueHolderListIterator.hasNext()) {
+                            SoftCache.ValueHolder<K, V> kvValueHolder = valueHolderListIterator.next();
+                            if (kvValueHolder.key.equals(key)) {
+                                hashIterator.remove();
+                                valueHolderListIterator.remove();
+                                cacheManager.removeFromDb(kvValueHolder.key, kvValueHolder.val);
+                                logExpiredElement(elapsedTimeElement, kvValueHolder);
                             }
+                        }
 
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    } finally {
-                        if (lock) {
-                            hardCacheLock.unlock();
-                            lock = false;
-                        }
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                } finally {
+                    if (lock) {
+                        hardCacheLock.unlock();
                     }
                 }
-
             }
-            log.info(String.format("Sleep for 8 seconds"));
+
         }
-
-
-
-        private void logExpiredElement(long elapsedTimeElement, ValueHolder<K, V> kvValueHolder) {
-            long hours = TimeUnit.MILLISECONDS.toHours(elapsedTimeElement);
-            long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTimeElement);
-            long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTimeElement);
-            log.info(String.format(" removed element [%s:%s] elapsed time: %02d:%02d:%02d ", kvValueHolder.key, kvValueHolder.val, hours, minutes, seconds));
-        }
+        log.info(String.format("Sleep for 8 seconds"));
     }
 
-
+    private void logExpiredElement(long elapsedTimeElement, SoftCache.ValueHolder<K, V> kvValueHolder) {
+        long hours = TimeUnit.MILLISECONDS.toHours(elapsedTimeElement);
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(elapsedTimeElement);
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTimeElement);
+        log.info(String.format(" Thread %s removed element [%s:%s] elapsed time: %02d:%02d:%02d ", Thread.currentThread().getName() + Thread.currentThread().getId(), kvValueHolder.key, kvValueHolder.val, hours, minutes, seconds));
+    }
 }
