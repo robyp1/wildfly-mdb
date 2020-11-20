@@ -11,9 +11,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javaee-api.version>7.0</javaee-api.version>
         <maven.compiler.target>1.7</maven.compiler.target>
-        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.source>1.8</maven.compiler.source>
         <version.wildfly.maven.plugin>1.1.0.Final</version.wildfly.maven.plugin>
-        <hibernate.version>5.0.0.Final</hibernate.version>
+        <hibernate.version>5.0.9.Final</hibernate.version>
     </properties>
     <build>
         <finalName>webcaching</finalName>
@@ -21,9 +21,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
                 <configuration>
-                    <source>7</source>
-                    <target>7</target>
+                    <source>8</source>
+                    <target>8</target>
                 </configuration>
             </plugin>
         </plugins>
@@ -51,19 +52,30 @@
             <version>4.12</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-inline</artifactId>
+            <version>3.4.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.8.0</version>
+            <scope>test</scope>
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.jglue.cdi-unit</groupId>-->
+<!--            <artifactId>cdi-unit</artifactId>-->
+<!--            <version>3.1.2</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
 
         <!--   hibernate db test-->
         <dependency>
             <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-tools</artifactId>
-            <version>${hibernate.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-validator</artifactId>
-            <version>${hibernate.version}</version>
+            <artifactId>hibernate-entitymanager</artifactId>
+            <version>5.0.9.Final</version>
             <scope>test</scope>
         </dependency>
 
@@ -109,6 +121,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-war-plugin</artifactId>
+                        <version>3.2.2</version>
                         <configuration>
                             <webResources>
                                 <resource>
