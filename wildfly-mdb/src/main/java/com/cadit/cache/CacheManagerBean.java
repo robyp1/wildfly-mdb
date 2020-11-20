@@ -20,25 +20,22 @@ public class CacheManagerBean {
 
 
     @PostConstruct
-    public void init(){
+    public void init() {
         //schedule a task periodically each 8 secs
         ScheduleExpression schedulerExpression = new ScheduleExpression()
                 .hour("*")
                 .minute("*")
                 .second("*/8"); // ogni 8 secondi
-        timerService.createCalendarTimer(schedulerExpression, new TimerConfig("CacheManagerTaskTimer",false));
+        timerService.createCalendarTimer(schedulerExpression, new TimerConfig("CacheManagerTaskTimer", false));
     }
 
     @Timeout
     @Lock(value = LockType.WRITE)
     public void runExpiredCheckerThread() {
         CacheManager cacheManager = CacheManager.getInstance();
-        SoftCache.ExpireTimeAccessChecker task = cacheManager.expireTaskChecker();
+        ExpireTimeAccessChecker task = cacheManager.expireTaskChecker();
         task.run();
-
     }
-
-
 
 
     public String get(String key) {
@@ -49,7 +46,7 @@ public class CacheManagerBean {
         CacheManager.getInstance().put(key, value);
     }
 
-     public <K,V> void removeFromDb(K key, V val) {
+    public <K, V> void removeFromDb(K key, V val) {
         int executed = em.createQuery("delete CacheEntity c where c.key = :key and c.value = :value")
                 .setParameter("key", key)
                 .setParameter("value", val)
