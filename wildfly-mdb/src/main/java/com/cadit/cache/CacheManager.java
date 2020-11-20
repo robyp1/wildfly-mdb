@@ -15,8 +15,8 @@ public class CacheManager {
     }
 
 
-    public SoftCache.ExpireTimeAccessChecker expireTaskChecker() {
-        return cache.new ExpireTimeAccessChecker(5L);
+    public ExpireTimeAccessChecker expireTaskChecker() {
+        return new ExpireTimeAccessChecker(cache);
     }
 
 

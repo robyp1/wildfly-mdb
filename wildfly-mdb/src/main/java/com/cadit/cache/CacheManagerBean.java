@@ -32,7 +32,8 @@ public class CacheManagerBean {
     @PostConstruct
     public void runExpiredCheckerThread() {
         CacheManager cacheManager = CacheManager.getInstance();
-        SoftCache.ExpireTimeAccessChecker task = cacheManager.expireTaskChecker();
+        ExpireTimeAccessChecker task = cacheManager.expireTaskChecker();
+        task.setExpiredTime(5L);
         //schedule a task periodically each 8 secs
         taskFuture = executorService.scheduleAtFixedRate(task, 0, 8, TimeUnit.SECONDS);
     }
