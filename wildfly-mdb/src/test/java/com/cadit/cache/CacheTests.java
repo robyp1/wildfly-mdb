@@ -7,8 +7,6 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,7 +14,6 @@ import static org.mockito.Mockito.*;
 
 public class CacheTests {
 
-    final static ExecutorService executorService = Executors.newFixedThreadPool(2);
     final static CacheManagerTest cacheManagerTest = new CacheManagerTest();
 
     @BeforeClass
