@@ -7,10 +7,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -59,7 +56,7 @@ public class CacheTests {
 
 
     @Test
-    public void testConcurrentInMemCache() throws InterruptedException {
+    public void testConcurrentInMemCache() throws InterruptedException, ExecutionException {
         Executor executor = Executors.newFixedThreadPool(3);
         SoftCache<String, String> cache = new SoftCache<>();
         CompletableFuture<Void> c1 = new CompletableFuture<>();
@@ -99,8 +96,7 @@ public class CacheTests {
                     c3.complete(null);
                 }, executor
         );
-        CompletableFuture<Void> allCompleted = CompletableFuture.allOf(c1, c2, c3);
-        while (!allCompleted.isDone()) ;
+        CompletableFuture.allOf(c1, c2, c3).get();//la get è bloccante, appena hanno completato tutti continua
         System.out.println(System.nanoTime());
         assertThat(cache.get("k1")).isNotNull();
         assertThat(cache.get("k2")).isNotNull();
