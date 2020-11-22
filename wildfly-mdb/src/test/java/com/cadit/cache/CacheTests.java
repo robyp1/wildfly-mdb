@@ -97,6 +97,7 @@ public class CacheTests {
                 }, executor
         );
         CompletableFuture.allOf(c1, c2, c3).get();//la get è bloccante, appena hanno completato tutti continua
+        //il risultato dipende dall'ordine di esecuzione dei thread
         System.out.println(System.nanoTime());
         assertThat(cache.get("k1")).isNotNull();
         assertThat(cache.get("k2")).isNotNull();
