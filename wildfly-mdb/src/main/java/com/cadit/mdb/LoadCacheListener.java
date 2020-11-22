@@ -25,7 +25,7 @@ public class LoadCacheListener implements ServletContextListener {
         //invoked by servlet container only the first time wildfly start..
         // carica da database la cache di questo server leggendo da database l'ultimo snapshots
         //direttamente con CacheManagerBean senza mandare messaggi jms
-        CacheManagerBean cacheManager = EjbLocator.locateCacheManagerBean();
+        CacheManagerBean cacheManager = (CacheManagerBean) new EjbLocator(CacheManagerBean.class).getEjbReference();
         List<CacheEntity> cacheEntries = entityManager.createQuery("select c from CacheEntity c", CacheEntity.class)
                 .getResultList();
         for (CacheEntity cacheEntry : cacheEntries) {//load cache with data persisted
