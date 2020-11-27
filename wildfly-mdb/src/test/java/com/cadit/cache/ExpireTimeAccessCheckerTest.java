@@ -9,6 +9,7 @@ public class ExpireTimeAccessCheckerTest implements Runnable, ExpireTimeAccess {
 
     private SoftCache<String, String> cache ;
     private Long expiredTime;
+    private CacheManagerBean cacheManagerBean;
 
     public ExpireTimeAccessCheckerTest(){
     }
@@ -29,8 +30,16 @@ public class ExpireTimeAccessCheckerTest implements Runnable, ExpireTimeAccess {
         this.expiredTime = expiredTime;
     }
 
+    public CacheManagerBean getCacheManagerBean() {
+        return cacheManagerBean;
+    }
+
+    public void setCacheManagerBean(CacheManagerBean cacheManagerBean) {
+        this.cacheManagerBean = cacheManagerBean;
+    }
+
     @Override
     public void run() {
-        cache.pollExpiredDataCache(this);
+        cache.pollExpiredDataCache(this, getCacheManagerBean());
     }
 }

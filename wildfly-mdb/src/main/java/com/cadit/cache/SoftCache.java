@@ -213,7 +213,7 @@ public class SoftCache<K, V> extends AbstractMap<K, V> implements CachePoller {
         }
     }
 
-    public void pollExpiredDataCache(ExpireTimeAccess expiredTimeChecker) {
+    public void pollExpiredDataCache(ExpireTimeAccess expiredTimeChecker, CacheManagerBean cacheManager) {
 //        for (K hashKey : hash.keySet()) {
         Iterator<Entry<K, SoftValue<K, V>>> hashIterator = hash.entrySet().iterator();
         while (hashIterator.hasNext()) {
@@ -227,7 +227,6 @@ public class SoftCache<K, V> extends AbstractMap<K, V> implements CachePoller {
                 try {
                     if (elapsedTimeElement > expiredTimeChecker.getExpiredTime() && lastAccessMs.get() != 0) {
                         lock = true;
-                        CacheManagerBean cacheManager = (CacheManagerBean) new EjbLocator(CacheManagerBean.class).getEjbReference();
                         hardCacheLock.lock();
                         ListIterator<SoftCache.ValueHolder<K, V>> valueHolderListIterator = hardCache.listIterator();
                         //rimuovo dalla lista tutte le chiavi vecchie e nuove

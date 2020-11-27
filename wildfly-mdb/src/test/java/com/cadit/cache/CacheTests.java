@@ -47,8 +47,9 @@ public class CacheTests {
         ArgumentCaptor<String> valueCapture = ArgumentCaptor.forClass(String.class);
         doNothing().when(mockCacheMaangerBean).removeFromDb(valueCapture.capture(), valueCapture.capture());
         //devo mocckare anche EjbLocator! sennò nel run ho un nullpointer exception
-        MockedStatic<EjbLocator> ejbLocatorMockedStatic = mockStatic(EjbLocator.class);
-        ejbLocatorMockedStatic.when(EjbLocator::locateCacheManagerBean).thenReturn(mockCacheMaangerBean);
+//        MockedStatic<EjbLocator> ejbLocatorMockedStatic = mockStatic(EjbLocator.class);
+//        ejbLocatorMockedStatic.when(EjbLocator::locateCacheManagerBean).thenReturn(mockCacheMaangerBean);
+        when(taskSpy.getCacheManagerBean()).thenReturn(mockCacheMaangerBean);
         taskSpy.run();
         assertThat(cacheEmpty.get("k3")).isNotEqualTo("v3");
         assertThat(cacheEmpty.get("k4")).isNotEqualTo("v4");

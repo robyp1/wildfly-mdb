@@ -1,5 +1,6 @@
 package com.cadit.domain;
 
+import com.cadit.cache.CacheManagerBean;
 import com.cadit.domain.ExpireTimeAccess;
 
 public interface CachePoller {
@@ -11,5 +12,5 @@ public interface CachePoller {
      *
      * @param expiredTimeChecker
      */
-    void pollExpiredDataCache(ExpireTimeAccess expiredTimeChecker);
+    void pollExpiredDataCache(ExpireTimeAccess expiredTimeChecker, CacheManagerBean cacheManager);
 }
